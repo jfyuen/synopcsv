@@ -96,40 +96,44 @@ func FetchMeasureCSV(date string) (io.Reader, error) {
 	return fetchURL(url)
 }
 
-func isCodeValid(v int, code string) bool {
-	return true
-	/* TODO: Find how to validate codes correctly
+// valid code description are available at http://www.meteo.fr/meteonet/DIR_reso40/fichiers_obs_france_web_reso40_f.htm
+func isCodeValid(v int, code string) (*int, bool) {
 	switch code {
-	case "0200":
-		return v >= 0 && v <= 8
-	case "4677":
-		return v >= 0 && v <= 99
-	case "4561":
-		return v >= 0 && v <= 9
-	case "0513": // What about "/" value?
-		// TODO: in csv file, values are like 30, 34, ... why??
-		// return true at the moment because this columns is not meaningful for me now
-		return true
-		//		return v >= 0 && v <= 9
-	case "0515": // What about "/" value?
-		// See above
-		return true
-		//		return v >= 0 && v <= 9
-	case "0509": // What about "/" value?
-		// See above
-		return true
-		//		return v >= 0 && v <= 9
-	case "3855":
-		return v >= 0 && v <= 7
-	case "0901":
-		// See above
-		return true
-		//		return v >= 0 && v <= 9
-	case "3778": // Do not know how to check
-		return true
+	case "0200": // cod_tend
+		return &v, v >= 0 && v <= 10
+	case "4677": // ww
+		return &v, v >= 0 && v <= 99
+	case "4561": // w1, w2
+		return &v, v >= 0 && v <= 9
+	case "0513": // cl: BUFR table 020012
+		if v == 62 {
+			return nil, true
+		}
+		return &v, v >= 30 && v <= 39
+	case "0515": // cm: BUFR table 020012
+		if v == 61 {
+			return nil, true
+		}
+		return &v, v >= 20 && v <= 29
+	case "0509": // ch: BUFR table 020012
+		if v == 60 {
+			return nil, true
+		}
+		return &v, v >= 10 && v <= 19
+	case "3855": // sw
+		return &v, v >= 0 && v <= 7
+	case "0901": // etat_sol
+		return &v, v >= 0 && v <= 19
+	case "3778": // phenspheN: Do not know how to check
+		return &v, true
+	case "0500": // ctypeN
+		if v == 59 {
+			return nil, true
+		}
+		return &v, v >= 0 && v <= 9
 	default:
-		return false
-	}*/
+		return nil, false
+	}
 }
 
 type parser struct {
@@ -163,12 +167,12 @@ func (p *parser) parseCode(s string, code string) *int {
 		p.err = errors.Wrapf(err, "error reading %v for code %v", s, code)
 		return nil
 	}
-
-	if !isCodeValid(val, code) {
+	r, ok := isCodeValid(val, code)
+	if !ok {
 		p.err = errors.Errorf("Invalid code: %v for %v", val, code)
 		return nil
 	}
-	return &val
+	return r
 }
 
 func (p *parser) parseDate(s string) time.Time {
