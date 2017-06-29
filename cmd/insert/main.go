@@ -13,7 +13,7 @@ import (
 	"io"
 
 	client "github.com/influxdata/influxdb/client/v2"
-	"github.com/jfyuen/weather"
+	"github.com/jfyuen/synopcsv"
 	"github.com/pkg/errors"
 )
 
@@ -41,7 +41,7 @@ func downloadFile(path string, f func() (io.Reader, error)) error {
 	return nil
 }
 
-func fetchMultipleMeasureCSV(start string, end string, storePath string) ([]weather.Measure, error) {
+func fetchMultipleMeasureCSV(start string, end string, storePath string) ([]synopcsv.Measure, error) {
 	fromDate, err := time.Parse("200601", start)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid start date")
@@ -50,18 +50,18 @@ func fetchMultipleMeasureCSV(start string, end string, storePath string) ([]weat
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid end date")
 	}
-	measures := make([]weather.Measure, 0)
+	measures := make([]synopcsv.Measure, 0)
 	for d := fromDate; d.Before(toDate); d = d.AddDate(0, 1, 0) {
 		dateStr := d.Format("200601")
 		filename := path.Join(storePath, dateStr+".csv")
-		err := downloadFile(filename, func() (io.Reader, error) { return weather.FetchMeasureCSV(dateStr) })
+		err := downloadFile(filename, func() (io.Reader, error) { return synopcsv.FetchMeasureCSV(dateStr) })
 
 		f, err := os.Open(filename)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		defer f.Close()
-		monthlyMeasures, err := weather.ParseMeasureCSV(f)
+		monthlyMeasures, err := synopcsv.ParseMeasureCSV(f)
 		if err != nil {
 			return nil, err
 		}
@@ -75,13 +75,13 @@ func fileExists(path string) bool {
 	return !os.IsNotExist(err)
 }
 
-func readStations(p string) ([]weather.Station, error) {
+func readStations(p string) ([]synopcsv.Station, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	defer f.Close()
-	return weather.ParseStationsCSV(f)
+	return synopcsv.ParseStationsCSV(f)
 }
 
 type flags struct {
@@ -125,7 +125,7 @@ func newFlags() flags {
 	return f
 }
 
-func createPoint(m weather.Measure, stationsMap map[string]weather.Station) (*client.Point, error) {
+func createPoint(m synopcsv.Measure, stationsMap map[string]synopcsv.Station) (*client.Point, error) {
 	tags := map[string]string{
 		"station_id": m.StationID,
 	}
@@ -157,7 +157,7 @@ func createPoint(m weather.Measure, stationsMap map[string]weather.Station) (*cl
 	return pt, errors.WithStack(err)
 }
 
-func insertMeasuresInflux(measures []weather.Measure, stationsMap map[string]weather.Station, f flags) error {
+func insertMeasuresInflux(measures []synopcsv.Measure, stationsMap map[string]synopcsv.Station, f flags) error {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     f.dbURL,
 		Username: f.user,
@@ -189,12 +189,12 @@ func main() {
 	f.check()
 
 	stationFilename := path.Join(f.downloadPath, "stations.csv")
-	err := downloadFile(stationFilename, weather.FetchStationCSV)
+	err := downloadFile(stationFilename, synopcsv.FetchStationCSV)
 	checkError(err)
 
 	stations, err := readStations(stationFilename)
 	checkError(err)
-	stationsMap := make(map[string]weather.Station)
+	stationsMap := make(map[string]synopcsv.Station)
 	for _, s := range stations {
 		stationsMap[s.ID] = s
 	}
