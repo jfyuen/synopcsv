@@ -85,7 +85,7 @@ func readStations(p string) ([]synopcsv.Station, error) {
 }
 
 type flags struct {
-	dbURL, dbName, user, passwd, from, to, at, downloadPath string
+	dbURL, dbName, user, passwd, from, to, at, downloadPath, seriesName string
 }
 
 func (f flags) check() {
@@ -121,11 +121,12 @@ func newFlags() flags {
 	flag.StringVar(&f.to, "to", "", "fetch meteo data to date excluded (must also supply -from, incompatible with -at), use YYYYMM")
 	flag.StringVar(&f.at, "at", "", "fetch meteo data at date (incompatible with -from/-to), use YYYYMMDDHH")
 	flag.StringVar(&f.downloadPath, "path", ".", "where to store downloaded files (default to current directory)")
+	flag.StringVar(&f.seriesName, "seriesName", "measurements", "series to store values in")
 	flag.Parse()
 	return f
 }
 
-func createPoint(m synopcsv.Measure, stationsMap map[string]synopcsv.Station) (*client.Point, error) {
+func createPoint(m synopcsv.Measure, stationsMap map[string]synopcsv.Station, seriesName string) (*client.Point, error) {
 	tags := map[string]string{
 		"station_id": m.StationID,
 	}
@@ -149,7 +150,7 @@ func createPoint(m synopcsv.Measure, stationsMap map[string]synopcsv.Station) (*
 	}
 
 	pt, err := client.NewPoint(
-		"measurements",
+		seriesName,
 		tags,
 		fields,
 		m.Date,
@@ -174,7 +175,7 @@ func insertMeasuresInflux(measures []synopcsv.Measure, stationsMap map[string]sy
 	})
 
 	for _, m := range measures {
-		pt, err := createPoint(m, stationsMap)
+		pt, err := createPoint(m, stationsMap, f.seriesName)
 		if err != nil {
 			checkError(errors.Wrap(err, "error creating point"))
 		}
