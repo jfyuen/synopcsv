@@ -169,20 +169,28 @@ func insertMeasuresInflux(measures []synopcsv.Measure, stationsMap map[string]sy
 	}
 	defer c.Close()
 
-	bp, _ := client.NewBatchPoints(client.BatchPointsConfig{
+	bpconf := client.BatchPointsConfig{
 		Database:  f.dbName,
 		Precision: "s",
-	})
+	}
+	bp, _ := client.NewBatchPoints(bpconf)
 
+	batchSize := 5000
 	for _, m := range measures {
 		pt, err := createPoint(m, stationsMap, f.seriesName)
 		if err != nil {
-			checkError(errors.Wrap(err, "error creating point"))
+			return errors.Wrap(err, "error creating point")
 		}
 		bp.AddPoint(pt)
+		if len(bp.Points()) > batchSize {
+			if err := c.Write(bp); err != nil {
+				return errors.Wrap(err, "error batch writing")
+			}
+			bp, _ = client.NewBatchPoints(bpconf)
+		}
 	}
 
-	return c.Write(bp)
+	return errors.Wrap(c.Write(bp), "error batch writing")
 }
 
 func main() {
