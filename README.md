@@ -8,4 +8,8 @@ The base page is located at: https://donneespubliques.meteofrance.fr/?fond=produ
 
 ## Command line
 
-A command line utility is available to download and insert some data into an influx db database, this is a test and work in progress.
+A command line utility is available to download and insert some data into an influx db database, this is a test and work in progress. 
+Example:
+```bash
+# cd cmd/insert && go run main.go -from 199601 -to 201706 -dbname ${INDLUX_DBNAME} -passwd ${INFLUX_PWD} -user ${INFLUX_USER} -url http://localhost:8086
+```
