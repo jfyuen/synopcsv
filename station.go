@@ -1,10 +1,14 @@
 package weather
 
 import (
+	"bytes"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // Station as defined in Synop
@@ -16,31 +20,37 @@ type Station struct {
 	Altitude  float64
 }
 
-// FetchStationCSV retrieve station lists as csv from
-// https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/postesSynop.csv
-func FetchStationCSV() (stations []Station, err error) {
-	url := "https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/postesSynop.csv"
+func fetchURL(url string) (r io.Reader, err error) {
 	var client = &http.Client{
 		Timeout: time.Second * 10,
 	}
 	response, err := client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	defer func() {
 		errClose := response.Body.Close()
 		if err == nil {
-			err = errClose
+			err = errors.WithStack(errClose)
 		}
 	}()
-	stations, err = parseStationCSV(response.Body)
+	b, err := ioutil.ReadAll(response.Body)
+	// stations, err = parseStationCSV(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
-	return stations, nil
+	return bytes.NewReader(b), nil
 }
 
-func parseStationCSV(in io.Reader) ([]Station, error) {
+// FetchStationCSV retrieve station lists as csv from
+// https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/postesSynop.csv
+func FetchStationCSV() (r io.Reader, err error) {
+	url := "https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/postesSynop.csv"
+	return fetchURL(url)
+}
+
+// ParseStationsCSV parses stations from a CSV file formated as "https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/postesSynop.csv"
+func ParseStationsCSV(in io.Reader) ([]Station, error) {
 	csvVals, err := parseCSV(in)
 	if err != nil {
 		return nil, err

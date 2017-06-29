@@ -6,7 +6,11 @@ import (
 )
 
 func TestFetchMeasureCSVDayTime(t *testing.T) {
-	measures, err := FetchMeasureCSV("2017062321")
+	r, err := FetchMeasureCSV("2017062321")
+	if err != nil {
+		t.Fatal(fmt.Printf("%+v\n", err))
+	}
+	measures, err := ParseMeasureCSV(r)
 	if err != nil {
 		t.Fatal(fmt.Printf("%+v\n", err))
 	}
@@ -17,7 +21,11 @@ func TestFetchMeasureCSVDayTime(t *testing.T) {
 }
 
 func TestFetchMeasureCSVMonth(t *testing.T) {
-	measures, err := FetchMeasureCSV("201705")
+	r, err := FetchMeasureCSV("201705")
+	if err != nil {
+		t.Fatal(fmt.Printf("%+v\n", err))
+	}
+	measures, err := ParseMeasureCSV(r)
 	if err != nil {
 		t.Fatal(fmt.Printf("%+v\n", err))
 	}

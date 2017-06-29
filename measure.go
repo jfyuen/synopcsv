@@ -3,7 +3,6 @@ package weather
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -83,7 +82,7 @@ type Measure struct {
 // with ${DATE} a string as YYYYMM
 // or https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/synop.${DATE}.csv
 // with ${DATE} a string as YYYYMMDDHH
-func FetchMeasureCSV(date string) (measures []Measure, err error) {
+func FetchMeasureCSV(date string) (io.Reader, error) {
 	baseURL := "https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/"
 	url := ""
 	switch len(date) {
@@ -94,24 +93,7 @@ func FetchMeasureCSV(date string) (measures []Measure, err error) {
 	default:
 		return nil, errors.Errorf("wrong date size: %v", date)
 	}
-	var client = &http.Client{
-		Timeout: time.Second * 10,
-	}
-	response, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		errClose := response.Body.Close()
-		if err == nil {
-			err = errClose
-		}
-	}()
-	measures, err = parseMeasureCSV(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	return measures, nil
+	return fetchURL(url)
 }
 
 func isCodeValid(v int, code string) bool {
@@ -208,7 +190,8 @@ func (p *parser) parseString(s string) *string {
 	return &s
 }
 
-func parseMeasureCSV(in io.Reader) ([]Measure, error) {
+// ParseMeasureCSV parses measures from a CSV file formated as https://donneespubliques.meteofrance.fr/client/document/doc_parametres_synop_168.pdf
+func ParseMeasureCSV(in io.Reader) ([]Measure, error) {
 	csvVals, err := parseCSV(in)
 	if err != nil {
 		return nil, err

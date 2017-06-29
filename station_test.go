@@ -5,7 +5,11 @@ import (
 )
 
 func TestFetchStationCSV(t *testing.T) {
-	stations, err := FetchStationCSV()
+	r, err := FetchStationCSV()
+	if err != nil {
+		t.Error(err)
+	}
+	stations, err := ParseStationsCSV(r)
 	if err != nil {
 		t.Error(err)
 	}
