@@ -41,6 +41,23 @@ func downloadFile(path string, f func() (io.Reader, error)) error {
 	return nil
 }
 
+func fetchSingleMeasureCSV(at string, storePath string) ([]synopcsv.Measure, error) {
+	_, err := time.Parse("2006010215", at)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid date")
+	}
+
+	filename := path.Join(storePath, at+".csv")
+	err = downloadFile(filename, func() (io.Reader, error) { return synopcsv.FetchMeasureCSV(at) })
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer f.Close()
+	return synopcsv.ParseMeasureCSV(f)
+}
+
 func fetchMultipleMeasureCSV(start string, end string, storePath string) ([]synopcsv.Measure, error) {
 	fromDate, err := time.Parse("200601", start)
 	if err != nil {
@@ -97,12 +114,6 @@ func (f flags) check() {
 	}
 	if f.at != "" && (f.from != "" || f.to != "") {
 		fmt.Fprintf(os.Stderr, "-at option provided with incompatible -from or -to\n")
-		flag.PrintDefaults()
-	}
-
-	// TODO: delete me when "at" is handled
-	if f.at != "" {
-		fmt.Fprintf(os.Stderr, "-at option not handled yet\n")
 		flag.PrintDefaults()
 	}
 }
@@ -208,7 +219,12 @@ func main() {
 		stationsMap[s.ID] = s
 	}
 
-	measures, err := fetchMultipleMeasureCSV(f.from, f.to, f.downloadPath)
+	var measures []synopcsv.Measure
+	if f.at != "" {
+		measures, err = fetchSingleMeasureCSV(f.at, f.downloadPath)
+	} else {
+		measures, err = fetchMultipleMeasureCSV(f.from, f.to, f.downloadPath)
+	}
 	checkError(err)
 
 	err = insertMeasuresInflux(measures, stationsMap, f)
