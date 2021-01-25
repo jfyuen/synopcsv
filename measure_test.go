@@ -17,9 +17,10 @@ func TestFetchMeasureCSVDayTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(fmt.Printf("%+v\n", err))
 	}
-	expected := 60
-	if len(measures) != expected {
-		t.Fatalf("Invalid number of measures: found %v, expected %v", len(measures), expected)
+	// Measures count usually go from 46 to 62, usually more around 60
+	expectedMin, expectedMax := 46, 62
+	if expectedMin > len(measures) || len(measures) > expectedMax {
+		t.Fatalf("Invalid number of measures: found %v, expected between %v and %v", len(measures), expectedMin, expectedMax)
 	}
 }
 
