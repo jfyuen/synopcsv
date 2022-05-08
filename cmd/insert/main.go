@@ -227,6 +227,8 @@ func main() {
 	}
 	checkError(err)
 
-	err = insertMeasuresInflux(measures, stationsMap, f)
-	checkError(err)
+	if f.dbURL != "" {
+		err := insertMeasuresInflux(measures, stationsMap, f)
+		checkError(err)
+	}
 }
